@@ -153,6 +153,23 @@ code {
 
 /* ── 미션 목록 ─────────────────────────────── */
 
+.session + .session { margin-top: var(--space-4); }
+.session-title {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 0 var(--space-2);
+  padding: 0 var(--space-2);
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+.session-title span { color: var(--ink-muted); font-weight: 500; }
+
+.session-end {
+  padding: var(--space-3);
+  border-top: 1px dashed var(--success);
+  margin-top: var(--space-3);
+}
+
 .mission-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
 
 .mission-link {
@@ -178,6 +195,34 @@ code {
 .mission-status { font-size: 0.85rem; text-align: center; }
 .mission-link.is-done .mission-status { color: var(--success); font-weight: 800; }
 .mission-concept { display: block; font-size: 0.78rem; color: var(--ink-muted); font-weight: 400; }
+
+/* ── 자유 연습 ─────────────────────────────── */
+
+.practice-nav { padding-top: var(--space-4); border-top: 1px solid var(--line); }
+.practice-nav-help { margin: 0 0 var(--space-2); padding: 0 var(--space-2); font-size: 0.78rem; color: var(--ink-muted); line-height: 1.4; }
+.practice-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0 var(--space-2);
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--space-1);
+}
+.practice-chip {
+  width: 100%;
+  min-height: 2.2rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.practice-chip:hover { border-color: var(--primary); }
+.practice-chip.is-done { color: var(--success); border-color: var(--success); }
+.practice-chip[aria-current="step"] { background: var(--primary); border-color: var(--primary); color: var(--primary-ink); }
 
 /* ── 본문 공통 ─────────────────────────────── */
 
@@ -420,6 +465,8 @@ h3 .insert-btn { font-weight: 800; }
     padding: var(--space-3) var(--space-4);
   }
   .mission-list { grid-auto-flow: column; grid-auto-columns: minmax(9rem, 1fr); overflow-x: auto; padding-bottom: var(--space-2); }
+  .session + .session { margin-top: var(--space-2); }
+  .practice-chips { grid-template-columns: repeat(12, minmax(2.2rem, 1fr)); overflow-x: auto; }
   .schema { grid-column: 1; padding: var(--space-4); }
   .stage { padding: var(--space-4); }
   .stage h1 { font-size: 1.4rem; }

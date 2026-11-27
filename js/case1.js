@@ -70,7 +70,9 @@ INSERT INTO card_payments VALUES
   (5,6,'기념품샵','에코백',15000,'20:30'),
   (6,6,'카페','라떼',5000,'21:10'),
   (7,9,'카페','생수',1500,'22:15'),
-  (8,4,'기념품샵','검은 모자',25000,'19:40');
+  (8,4,'기념품샵','검은 모자',25000,'19:40'),
+  (9,3,'기념품샵','검은 모자',25000,'17:40'),
+  (10,1,'기념품샵','검은 모자',25000,'20:50');
 `,
 
   tables: [
@@ -119,9 +121,17 @@ INSERT INTO card_payments VALUES
     },
   ],
 
+  // 한 차시 = 미션 3개. ending은 그 차시 마지막 미션을 풀었을 때 보여 준다.
+  sessions: [
+    { number: 1, title: "1차시 · 현장 조사", ending: "1차시 수사 종료. 다음 시간에는 그날 밤 <b>비상구</b>로 빠져나간 사람들을 추적합니다." },
+    { number: 2, title: "2차시 · 용의자 추리기", ending: "2차시 수사 종료. 용의자 번호와 검은 모자 영수증을 손에 넣었습니다. 다음 시간에는 테이블을 <b>연결</b>해 이름을 밝혀냅니다." },
+    { number: 3, title: "3차시 · 범인 검거", ending: "" },
+  ],
+
   missions: [
     {
       id: "m1",
+      session: 1,
       title: "사건 현장의 눈",
       concept: "SELECT * FROM",
       lesson:
@@ -139,6 +149,7 @@ INSERT INTO card_payments VALUES
     },
     {
       id: "m2",
+      session: 1,
       title: "관련자 명단",
       concept: "원하는 열만 고르기",
       lesson:
@@ -155,6 +166,7 @@ INSERT INTO card_payments VALUES
     },
     {
       id: "m3",
+      session: 1,
       title: "범행 시각의 전시실",
       concept: "WHERE (조건)",
       lesson:
@@ -172,6 +184,7 @@ INSERT INTO card_payments VALUES
     },
     {
       id: "m4",
+      session: 2,
       title: "비상구로 나간 사람들",
       concept: "WHERE 연습",
       lesson:
@@ -189,6 +202,7 @@ INSERT INTO card_payments VALUES
     },
     {
       id: "m5",
+      session: 2,
       title: "범행 이후에 나간 사람",
       concept: "AND, 비교 연산자",
       lesson:
@@ -207,6 +221,7 @@ INSERT INTO card_payments VALUES
     },
     {
       id: "m6",
+      session: 2,
       title: "기념품샵 영수증",
       concept: "ORDER BY (정렬)",
       lesson:
@@ -223,10 +238,11 @@ INSERT INTO card_payments VALUES
         "정답: <code>SELECT * FROM card_payments WHERE place = '기념품샵' ORDER BY paid_at;</code>",
       ],
       solved:
-        "<b>검은 모자</b>를 산 사람이 두 명이에요! person_id 9번(19:12)과 4번(19:40).",
+        "그날 <b>검은 모자</b>가 네 개나 팔렸어요! person_id 3·9·4·1번. 19:12 CCTV 속 결제와 시각이 딱 맞는 건 9번이네요.",
     },
     {
       id: "m7",
+      session: 3,
       title: "번호 대신 이름으로",
       concept: "JOIN (테이블 연결)",
       lesson:
@@ -244,6 +260,7 @@ INSERT INTO card_payments VALUES
     },
     {
       id: "m8",
+      session: 3,
       title: "검은 모자의 주인",
       concept: "JOIN + WHERE",
       lesson:
@@ -258,7 +275,27 @@ INSERT INTO card_payments VALUES
         "정답: <code>SELECT people.name, card_payments.paid_at FROM card_payments JOIN people ON card_payments.person_id = people.id WHERE item = '검은 모자';</code>",
       ],
       solved:
-        "검은 모자를 산 사람은 <b>강태오</b>와 <b>최유나</b>. 이제 지금까지의 단서를 모아 범인을 지목할 시간입니다.",
+        "검은 모자를 산 사람은 <b>박준호, 강태오, 최유나, 김도윤</b> 네 명. 7번 결과와 겹치는 사람이 보이나요? 마지막으로 쿼리 하나로 확인해 봅시다.",
+    },
+    {
+      id: "m9",
+      session: 3,
+      title: "결정적 증거",
+      concept: "테이블 3개 JOIN",
+      lesson:
+        "<code>JOIN</code>은 여러 번 이어 쓸 수 있어요. <code>people</code>을 가운데 두고 <code>entry_log</code>와 <code>card_payments</code>를 모두 연결하면, 두 기록에 함께 등장하는 사람을 한 번에 찾을 수 있습니다.<br><code>FROM people JOIN entry_log ON ... JOIN card_payments ON ...</code>",
+      story:
+        "반장님: <q>눈으로 비교하는 건 증거가 안 돼. 조건을 모두 만족하는 사람을 SQL로 뽑아 와.</q>",
+      task: "22:47 이후 <b>비상구</b>로 나갔고, <b>검은 모자</b>도 산 사람의 <b>이름(people.name)</b>만 조회하세요.",
+      expected:
+        "SELECT people.name FROM people JOIN entry_log ON entry_log.person_id = people.id JOIN card_payments ON card_payments.person_id = people.id WHERE entry_log.exit_gate = '비상구' AND entry_log.exited_at >= '22:47' AND card_payments.item = '검은 모자'",
+      hints: [
+        "7번 미션의 JOIN 뒤에 <code>JOIN card_payments ON card_payments.person_id = people.id</code>를 하나 더 붙여 보세요.",
+        "<code>WHERE</code>에는 조건 세 개가 필요해요: 나간 문, 나간 시각, 구매 물품. 모두 <code>AND</code>로 연결합니다.",
+        "정답: <code>SELECT people.name FROM people JOIN entry_log ON entry_log.person_id = people.id JOIN card_payments ON card_payments.person_id = people.id WHERE exit_gate = '비상구' AND exited_at &gt;= '22:47' AND item = '검은 모자';</code>",
+      ],
+      solved:
+        "모든 조건을 만족하는 사람은 단 한 명, <b>강태오</b>. 이제 범인을 지목할 시간입니다.",
     },
   ],
 
@@ -271,13 +308,15 @@ INSERT INTO card_payments VALUES
       한지우:
         "한지우는 22:54에 비상구로 나갔지만 <b>검은 모자를 산 기록이 없어요</b>. CCTV 속 범인은 검은 모자를 쓰고 있었죠.",
       박준호:
-        "박준호는 비상구로 나갔지만 <b>22:20</b>, 범행 시각보다 이전이에요.",
+        "박준호는 검은 모자를 샀고 비상구로 나갔지만 <b>22:20</b>, 범행 시각(22:47)보다 이전이에요.",
+      김도윤:
+        "김도윤은 검은 모자를 샀고 22:47 이후에 나갔지만, 비상구가 아니라 <b>정문</b>으로 나갔어요.",
     },
     wrongDefault:
-      "이 사람은 22:47 이후 비상구로 나가지도, 검은 모자를 사지도 않았어요. 7번과 8번 미션의 결과를 다시 비교해 보세요.",
+      "이 사람은 22:47 이후 비상구로 나가지도, 검은 모자를 사지도 않았어요. 9번 미션의 결과를 다시 확인해 보세요.",
     ending:
-      "정답! 범행 시각 이후 비상구로 나간 사람(한지우, 강태오)과 검은 모자를 산 사람(강태오, 최유나)이 <b>겹치는 단 한 사람</b>, 강태오가 범인입니다.",
-    teaser:
-      "그런데… 강태오와 거의 같은 시각에 비상구로 나간 한지우는 누구일까요? 주차장의 회색 승합차는? <b>2장: 공범을 찾아라</b> (GROUP BY, 서브쿼리)가 곧 이어집니다.",
+      "정답! 22:47 이후 비상구로 나갔고, 검은 모자까지 산 <b>단 한 사람</b>, 강태오가 범인입니다. 검은 모자를 산 사람은 넷이었지만 박준호는 범행 전에, 김도윤은 정문으로, 최유나는 일찍 나갔죠.",
+    epilogue:
+      "3시간 동안 사용한 SQL: <code>SELECT</code> · <code>FROM</code> · <code>WHERE</code> · <code>AND</code> · <code>ORDER BY</code> · <code>JOIN</code>. 수고했어요, 수사관!",
   },
 };

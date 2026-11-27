@@ -3,9 +3,10 @@
   "use strict";
 
   const CASE = window.CASE;
+  const PRACTICE = window.PRACTICE;
   const { validateQuery, translateError, normalize, compareResults } = window.Engine;
 
-  const STORAGE_KEY = `sqlDetective.${CASE.id}.v1`;
+  const STORAGE_KEY = `sqlDetective.${CASE.id}.v2`;
   const MAX_ROWS = 200;
   // 교사용: 주소 끝에 ?all=1 을 붙이면 모든 미션이 열린다
   const UNLOCK_ALL = new URLSearchParams(location.search).get("all") === "1";
@@ -13,8 +14,9 @@
   const $ = (sel) => document.querySelector(sel);
   const main = $("#main");
 
-  let db = null;
-  const expected = {}; // 미션 id → 정답 결과
+  let db = null; // 본편 사건 DB
+  let practiceDb = null; // 연습 문제 DB (방문 기록 600여 건)
+  const expected = {}; // 미션·연습 문제 id → 정답 결과
   let progress = loadProgress();
   let view = progress.seenIntro ? progress.lastView || firstOpenMission() : "intro";
 
@@ -37,11 +39,14 @@
   }
 
   const missionIndex = (id) => CASE.missions.findIndex((m) => m.id === id);
+  const practiceIndex = (id) => PRACTICE.problems.findIndex((p) => p.id === id);
+  const isPractice = (id) => practiceIndex(id) >= 0;
+  const practiceDoneCount = () => PRACTICE.problems.filter((p) => progress.done[p.id]).length;
   const doneCount = () => CASE.missions.filter((m) => progress.done[m.id]).length;
   const allDone = () => doneCount() === CASE.missions.length;
 
   function isUnlocked(id) {
-    if (id === "intro" || UNLOCK_ALL) return true;
+    if (id === "intro" || UNLOCK_ALL || isPractice(id)) return true;
     if (id === "accuse") return allDone();
     const i = missionIndex(id);
     if (i < 0) return false;
@@ -69,16 +74,47 @@
   }
 
   function renderNav() {
-    const items = CASE.missions.map((m, i) => {
-      const done = progress.done[m.id];
-      const status = done ? "✓" : isUnlocked(m.id) ? String(i + 1) : "🔒";
-      const label = done ? "완료" : isUnlocked(m.id) ? "" : "잠김";
-      return navItem(m.id, status, m.title, m.concept, done, label);
-    });
-    const accuseStatus = progress.caseSolved ? "✓" : isUnlocked("accuse") ? "!" : "🔒";
-    items.push(navItem("accuse", accuseStatus, "범인 지목", "모든 단서 종합", progress.caseSolved,
-      isUnlocked("accuse") ? "" : "잠김"));
-    $("#mission-list").innerHTML = items.join("");
+    const lastSession = CASE.sessions[CASE.sessions.length - 1].number;
+    $("#mission-list").innerHTML = CASE.sessions
+      .map((session) => {
+        const items = CASE.missions
+          .filter((m) => m.session === session.number)
+          .map((m) => {
+            const i = missionIndex(m.id);
+            const done = progress.done[m.id];
+            const status = done ? "✓" : isUnlocked(m.id) ? String(i + 1) : "🔒";
+            const label = done ? "완료" : isUnlocked(m.id) ? "" : "잠김";
+            return navItem(m.id, status, m.title, m.concept, done, label);
+          });
+        if (session.number === lastSession) {
+          const accuseStatus = progress.caseSolved ? "✓" : isUnlocked("accuse") ? "!" : "🔒";
+          items.push(navItem("accuse", accuseStatus, "범인 지목", "모든 단서 종합", progress.caseSolved,
+            isUnlocked("accuse") ? "" : "잠김"));
+        }
+        const done = CASE.missions.filter((m) => m.session === session.number && progress.done[m.id]).length;
+        const total = CASE.missions.filter((m) => m.session === session.number).length;
+        return `<section class="session">
+          <h3 class="session-title">${escapeHTML(session.title)} <span>${done}/${total}</span></h3>
+          <ol class="mission-list">${items.join("")}</ol>
+        </section>`;
+      })
+      .join("") + renderPracticeNav();
+  }
+
+  function renderPracticeNav() {
+    const chips = PRACTICE.problems
+      .map((p, i) => {
+        const done = progress.done[p.id];
+        const current = view === p.id ? ' aria-current="step"' : "";
+        return `<li><button type="button" class="practice-chip${done ? " is-done" : ""}" data-view="${p.id}"${current}
+          title="${escapeHTML(p.title)}" aria-label="연습 ${i + 1}: ${escapeHTML(p.title)}${done ? " (완료)" : ""}">${done ? "✓" : i + 1}</button></li>`;
+      })
+      .join("");
+    return `<section class="session practice-nav">
+      <h3 class="session-title">자유 연습 · 방문 기록 <span>${practiceDoneCount()}/${PRACTICE.problems.length}</span></h3>
+      <p class="practice-nav-help">600여 건 데이터로 SELECT·WHERE 연습. 언제든 풀 수 있어요.</p>
+      <ol class="practice-chips">${chips}</ol>
+    </section>`;
   }
 
   function navItem(id, status, title, concept, done, srLabel) {
@@ -91,8 +127,8 @@
     </button></li>`;
   }
 
-  function renderSchema() {
-    $("#schema-list").innerHTML = CASE.tables
+  function renderSchema(tables) {
+    $("#schema-list").innerHTML = tables
       .map(
         (t) => `<section class="schema-table">
           <h3><button type="button" class="insert-btn" data-insert="${t.name}" aria-label="${t.name} 입력">${t.name}</button><span>${escapeHTML(t.label)}</span></h3>
@@ -112,8 +148,10 @@
     }
     renderNav();
     renderProgress();
+    renderSchema(isPractice(view) ? PRACTICE.tables : CASE.tables);
     if (view === "intro") renderIntro();
     else if (view === "accuse") renderAccuse();
+    else if (isPractice(view)) renderMission(PRACTICE.problems[practiceIndex(view)]);
     else renderMission(CASE.missions[missionIndex(view)]);
     if (focus) {
       const heading = main.querySelector("h1");
@@ -134,8 +172,10 @@
         <ol class="how-to">
           <li>각 미션의 지시에 맞게 SQL 쿼리를 입력하고 <b>실행</b>을 누르세요. (단축키 <kbd>Ctrl</kbd>+<kbd>Enter</kbd>)</li>
           <li>결과가 맞으면 단서를 얻고 다음 미션이 열립니다.</li>
+          <li>수사는 <b>3차시</b>, 차시마다 미션 3개씩 진행합니다. 진행 상황은 자동 저장돼요.</li>
           <li>막히면 <b>힌트</b>를 누르세요. 세 번째 힌트는 정답입니다.</li>
           <li>오른쪽 <b>테이블 구조</b>에서 테이블과 열 이름을 확인할 수 있어요.</li>
+          <li>시간이 남으면 왼쪽 아래 <b>자유 연습</b>에서 600여 건의 방문 기록으로 더 연습할 수 있어요.</li>
         </ol>
       </div>
       <button type="button" class="btn btn-primary" id="start-btn">수사 시작 →</button>`;
@@ -149,14 +189,21 @@
   // ── 미션 ─────────────────────────────
 
   function renderMission(m) {
-    const i = missionIndex(m.id);
+    const practice = isPractice(m.id);
+    const eyebrow = practice
+      ? `자유 연습 ${practiceIndex(m.id) + 1} / ${PRACTICE.problems.length} · ${escapeHTML(m.concept)}`
+      : `${m.session}차시 · 미션 ${missionIndex(m.id) + 1} / ${CASE.missions.length} · ${escapeHTML(m.concept)}`;
+    const practiceIntro = practice && practiceIndex(m.id) === 0
+      ? `<div class="card intro-lines"><p>${PRACTICE.intro}</p></div>`
+      : "";
     main.innerHTML = `
-      <p class="eyebrow">미션 ${i + 1} / ${CASE.missions.length} · ${escapeHTML(m.concept)}</p>
+      <p class="eyebrow">${eyebrow}</p>
       <h1 tabindex="-1">${escapeHTML(m.title)}</h1>
+      ${practiceIntro}
       <p class="story">${m.story}</p>
 
       <div class="card task">
-        <p class="task-label">미션</p>
+        <p class="task-label">${practice ? "문제" : "미션"}</p>
         <p>${m.task}</p>
       </div>
 
@@ -225,7 +272,7 @@
 
     let result;
     try {
-      result = normalize(db.exec(sql));
+      result = normalize((isPractice(m.id) ? practiceDb : db).exec(sql));
     } catch (err) {
       feedback.innerHTML = note("error", "오류", escapeHTML(translateError(err.message)));
       $("#results").innerHTML = "";
@@ -255,13 +302,35 @@
   }
 
   function showSolved(m, { announce }) {
+    if (isPractice(m.id)) return showPracticeSolved(m, { announce });
     const i = missionIndex(m.id);
     const isLast = i === CASE.missions.length - 1;
     const nextId = isLast ? "accuse" : CASE.missions[i + 1].id;
-    const nextLabel = isLast ? "범인 지목하러 가기 →" : "다음 미션 →";
+    const session = CASE.sessions.find((s) => s.number === m.session);
+    const endsSession = !isLast && CASE.missions[i + 1].session !== m.session;
+    const nextLabel = isLast ? "범인 지목하러 가기 →" : endsSession ? `${m.session + 1}차시 시작 →` : "다음 미션 →";
+    const sessionEnd = endsSession && session && session.ending
+      ? `<p class="session-end"><b>■ ${escapeHTML(session.title)} 끝</b><br>${session.ending}</p>`
+      : "";
     $("#solved").innerHTML = `
       <div class="solved">
         <p class="stamp">단서 확보</p>
+        <p>${m.solved}</p>
+        ${sessionEnd}
+        <button type="button" class="btn btn-primary" id="next-btn">${nextLabel}</button>
+      </div>`;
+    $("#next-btn").addEventListener("click", () => go(nextId));
+    if (announce) $("#next-btn").focus({ preventScroll: true });
+  }
+
+  function showPracticeSolved(m, { announce }) {
+    const i = practiceIndex(m.id);
+    const next = PRACTICE.problems[i + 1];
+    const nextId = next ? next.id : firstOpenMission();
+    const nextLabel = next ? "다음 연습 →" : "본편 수사로 돌아가기 →";
+    $("#solved").innerHTML = `
+      <div class="solved">
+        <p class="stamp">정답</p>
         <p>${m.solved}</p>
         <button type="button" class="btn btn-primary" id="next-btn">${nextLabel}</button>
       </div>`;
@@ -343,7 +412,7 @@
       <div class="solved">
         <p class="stamp">사건 해결</p>
         <p>${accusation.ending}</p>
-        <p>${accusation.teaser}</p>
+        <p>${accusation.epilogue}</p>
       </div>`;
   }
 
@@ -380,12 +449,15 @@
 
   async function init() {
     $("#case-title").textContent = CASE.title;
-    renderSchema();
+    renderSchema(CASE.tables);
     try {
       const SQL = await initSqlJs({ locateFile: (file) => `vendor/${file}` });
       db = new SQL.Database();
       db.run(CASE.schemaSQL);
       for (const m of CASE.missions) expected[m.id] = normalize(db.exec(m.expected));
+      practiceDb = new SQL.Database();
+      practiceDb.run(PRACTICE.buildSQL());
+      for (const p of PRACTICE.problems) expected[p.id] = normalize(practiceDb.exec(p.expected));
     } catch (err) {
       main.innerHTML = `<h1 tabindex="-1">불러오기 실패</h1>
         <div class="note note-error"><span class="note-icon">오류</span>

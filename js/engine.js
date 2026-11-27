@@ -67,6 +67,23 @@
   }
 
   /**
+   * 정렬 판정. ordered가 true면 정답과 행 순서가 완전히 같아야 하고,
+   * { column, desc }면 그 열만 오름/내림차순인지 본다 (값이 같은 행끼리의 순서는 따지지 않음).
+   */
+  function isOrdered(actualRows, expectedRows, ordered) {
+    if (ordered === true) {
+      return JSON.stringify(actualRows.map(rowKey)) === JSON.stringify(expectedRows.map(rowKey));
+    }
+    const { column, desc } = ordered;
+    for (let i = 1; i < actualRows.length; i++) {
+      const prev = actualRows[i - 1][column];
+      const cur = actualRows[i][column];
+      if (desc ? prev < cur : prev > cur) return false;
+    }
+    return true;
+  }
+
+  /**
    * 학생 결과와 정답 결과를 비교한다. 열 이름(별칭)은 비교하지 않고 값만 본다.
    * @returns {{ ok: boolean, message: string }}
    */
@@ -76,7 +93,7 @@
     const exCols = expected.columns.length;
 
     if (ac.length === 0 && ex.length > 0) {
-      return { ok: false, message: "결과가 한 줄도 없어요. 조건의 값(철자, 띄어쓰기)이 데이터와 똑같은지 확인하세요." };
+      return { ok: false, message: "결과가 한 줄도 없어요. 조건의 값(철자, 띄어쓰기)이 데이터와 똑같은지, AND와 OR를 바르게 썼는지 확인하세요." };
     }
     if (actual.columns.length !== exCols) {
       return {
@@ -108,7 +125,7 @@
           : "행 수는 맞지만 내용이 달라요. 어떤 열을 고르는지, 조건이 맞는지 다시 보세요.",
       };
     }
-    if (ordered && JSON.stringify(acKeys) !== JSON.stringify(exKeys)) {
+    if (ordered && !isOrdered(ac, ex, ordered)) {
       return { ok: false, message: "내용은 맞는데 정렬 순서가 달라요. ORDER BY를 확인하세요." };
     }
     return { ok: true, message: "단서 확보!" };
