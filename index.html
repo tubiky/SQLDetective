@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SQL 탐정 — 하늘미술관 도난 사건</title>
+  <meta name="description" content="SQL로 단서를 찾아 범인을 밝히는 수업용 추리 게임">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔍</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">🔍</span>
+      <div>
+        <p class="brand-name">SQL 탐정</p>
+        <p class="brand-case" id="case-title"></p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <p class="progress" id="progress" aria-live="polite"></p>
+      <button type="button" class="btn btn-quiet" id="reset-btn">처음부터</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="missions" aria-label="미션 목록">
+      <h2 class="panel-title">수사 일지</h2>
+      <ol id="mission-list" class="mission-list"></ol>
+    </nav>
+
+    <main id="main" class="stage" tabindex="-1">
+      <p class="loading" role="status">수사 데이터베이스를 불러오는 중…</p>
+    </main>
+
+    <aside class="schema" aria-labelledby="schema-title">
+      <h2 class="panel-title" id="schema-title">테이블 구조</h2>
+      <p class="schema-help">이름을 누르면 입력창에 들어가요.</p>
+      <div id="schema-list"></div>
+    </aside>
+  </div>
+
+  <script src="vendor/sql-wasm.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/case1.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
